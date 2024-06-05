@@ -98,16 +98,16 @@ struct EncodeJob
 {
   string name;
 
-  RasterHandle raster;
+  RasterHandle raster;//可能表示需要编码的图像或视频帧
 
   Encoder encoder;
   EncoderMode mode;
 
-  uint8_t y_ac_qi;
-  size_t target_size;
+  uint8_t y_ac_qi;//表示量化参数
+  size_t target_size;//目标帧大小或目标比特率
 
   EncodeJob( const string & name, RasterHandle raster, const Encoder & encoder,
-             const EncoderMode mode, const uint8_t y_ac_qi, const size_t target_size )
+             const EncoderMode mode, const uint8_t y_ac_qi, const size_t target_size )//在函数形参列表中，可以加const修饰形参，防止误操作
     : name( name ), raster( raster ), encoder( encoder ),
       mode( mode ), y_ac_qi( y_ac_qi ), target_size( target_size )
   {}
