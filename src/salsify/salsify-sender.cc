@@ -107,7 +107,7 @@ struct EncodeJob
   size_t target_size;//目标帧大小或目标比特率
 
   EncodeJob( const string & name, RasterHandle raster, const Encoder & encoder,
-             const EncoderMode mode, const uint8_t y_ac_qi, const size_t target_size )//在函数形参列表中，可以加const修饰形参，防止误操作
+             const EncoderMode mode, const uint8_t y_ac_qi, const size_t target_size )//在函数形参列表中，可以加const修饰形参，防止传入的实参值发生改变
     : name( name ), raster( raster ), encoder( encoder ),
       mode( mode ), y_ac_qi( y_ac_qi ), target_size( target_size )
   {}
@@ -136,6 +136,8 @@ struct EncodeOutput
 };
 
 EncodeOutput do_encode_job( EncodeJob && encode_job )
+//&& 表示 encode_job 是一个右值引用。这意味着 encode_job 可以绑定到一个临时的 EncodeJob 对象或者一个可以被移动的 EncodeJob 对象。
+//这样，我们就可以在不进行复制的情况下，直接使用这个对象的资源，从而提高代码的效率。
 {
   vector<uint8_t> output;
 
@@ -164,7 +166,7 @@ EncodeOutput do_encode_job( EncodeJob && encode_job )
   const auto encode_ending = system_clock::now();
   const auto ms_elapsed = duration_cast<milliseconds>( encode_ending - encode_beginning );
 
-  return { move( encode_job.encoder ), move( output ), source_minihash, ms_elapsed, encode_job.name, quantizer_in_use };
+  return { move( encode_job.encoder ), move( output ), source_minihash, ms_elapsed, encode_job.name, quantizer_in_use };//调用构造函数，创建结构体对象
 }
 
 size_t target_size( uint32_t avg_delay, const uint64_t last_acked, const uint64_t last_sent,
