@@ -59,18 +59,22 @@ using namespace std::chrono;
 using namespace PollerShortNames;
 
 class AverageEncodingTime
+//计算平均编码时间
 {
 private:
-  static constexpr double ALPHA = 0.1;
+  static constexpr double ALPHA = 0.1;//计算平均编码时间时作为权重因子
 
-  double value_ { -1.0 };
-  microseconds last_update_{ 0 };
+  double value_ { -1.0 };//存储当前的平均编码时间
+  microseconds last_update_{ 0 };//存储上一次更新平均编码时间的时间戳
 
 public:
   void add( const microseconds timestamp_us )
+// 这个函数接收一个时间戳作为参数，然后根据这个时间戳和上一次更新的时间戳来更新平均编码时间。如果新的时间戳比上一次更新的时间戳晚1秒或以上，那么平均编码时间将被重置为0。
+// 否则，平均编码时间将被更新为新的编码时间和旧的编码时间的加权平均值，其中新的编码时间的权重为ALPHA，旧的编码时间的权重为1 - ALPHA
   {
     assert( timestamp_us >= last_update_ );
-
+//assert() 是一个宏，用于在调试阶段检查程序的逻辑错误。如果括号内的表达式为真（非零），assert() 不会有任何效果。
+//但是，如果表达式为假（零），assert() 将在标准错误上打印一条错误消息，并通过调用 abort() 来终止程序。
     if ( value_ < 0 ) {
       value_ = 0;
     }
@@ -86,6 +90,8 @@ public:
   }
 
   uint32_t int_value() const { return static_cast<uint32_t>( value_ ); }
+  // static_cast<uint32_t>( value_ ) 将 value_（一个 double 类型的值）转换为 uint32_t 类型。
+  // 这种转换会丢失 value_ 的小数部分，只保留整数部分
 };
 
 struct EncodeJob
@@ -122,6 +128,10 @@ struct EncodeOutput
     : encoder( move( encoder ) ), frame( move( frame ) ),
       source_minihash( source_minihash ), encode_time( encode_time ),
       job_name( job_name ), y_ac_qi( y_ac_qi )
+// Encoder && encoder 和 vector<uint8_t> && frame：这两个参数是右值引用，用于接收临时对象或可以被移动的对象。
+// 右值引用允许我们在不复制数据的情况下将资源从一个对象转移到另一个对象。
+// 使用 std::move 函数将 encoder 和 frame 的资源移动到新创建的 EncodeOutput 对象中，而不是复制这些资源。
+// 这可以提高效率，特别是当 encoder 和 frame 包含大量数据时
   {}
 };
 
