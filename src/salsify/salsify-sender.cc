@@ -289,7 +289,7 @@ int main( int argc, char *argv[] )
     }
   }
 
-  if ( optind + 2 >= argc ) {
+  if ( optind + 2 >= argc ) {//optind是一个全局变量，它在getopt库中被定义。当你使用getopt或getopt_long函数解析命令行参数时，optind会被更新为下一个将被解析的参数的索引。
     usage( argv[ 0 ] );
     return EXIT_FAILURE;
   }
