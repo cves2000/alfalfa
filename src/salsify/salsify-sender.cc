@@ -210,6 +210,20 @@ uint64_t ack_seq_no( const AckPacket & ack,
   return ( ack.frame_no() > 0 )
        ? ( cumulative_fpf[ ack.frame_no() - 1 ] + ack.fragment_no() )
        : ack.fragment_no();
+/*
+ack可能是指确认包（Acknowledgement Packet）。在网络编程中，当一个数据包从发送端发送到接收端后，接收端通常会发送一个确认包（ACK）回到发送端，以确认它已经成功接收了这个数据包。
+在这段代码中，ack是AckPacket类型的一个对象，它可能包含了一些关于确认包的信息，比如确认的帧号（ack.frame_no()）和确认的数据包序号（ack.fragment_no()）。这些信息可以用来更新发送端的状态，比如已确认的数据包数量、未确认的数据包数量等。
+
+`fragment_no`可能是指一个数据包在其所属帧中的序号。在视频编码和网络传输中，一帧视频通常会被分割成多个数据包（或称为片段，fragment）进行发送，每个数据包都有一个在当前帧中的序号，这就是`fragment_no`。
+例如，如果一帧被分割成了10个数据包，那么这些数据包的`fragment_no`就会从0（或1）到9。这样，接收端在接收到所有的数据包后，就可以根据`fragment_no`将它们重新组合成完整的帧。
+
+`cumulative_fpf`是一个向量（vector），它存储了每一帧的累积数据包数量。在这个上下文中，`fpf`可能代表“Frame Per Fragment”，即每个数据包中的帧数量。
+当一个新的帧被编码并分割成多个数据包时，这些数据包的数量就会被添加到`cumulative_fpf`向量的末尾。因此，`cumulative_fpf[i]`表示的是前`i+1`帧的数据包总数。
+这个向量可以用来计算任何数据包在全局范围内的序列号。例如，如果你知道一个数据包是第`i`帧的第`j`个数据包，那么你可以通过`cumulative_fpf[i-1] + j`来计算这个数据包的全局序列号（假设帧和数据包的编号都是从0开始的）。希望这个解释对你有所帮助！
+
+如果ack.frame_no()大于0，那么返回cumulative_fpf[ ack.frame_no() - 1 ] + ack.fragment_no()。这里，cumulative_fpf[ ack.frame_no() - 1 ]获取的是累积的帧内数据包数量，ack.fragment_no()获取的是当前帧内的数据包序号，两者相加得到的是全局的数据包序号。
+如果ack.frame_no()不大于0（即为0），那么返回ack.fragment_no()。这表示当前帧是第一帧，因此数据包序号就是当前帧内的数据包序号。
+这个函数可能用于网络编程中的可靠传输协议，通过跟踪每个数据包的确认序列号，可以知道哪些数据包已经被接收，哪些数据包可能需要重传。*/
 }
 
 enum class OperationMode
@@ -221,7 +235,7 @@ int main( int argc, char *argv[] )
 {
   /* check the command-line arguments */
   if ( argc < 1 ) { /* for sticklers */
-    abort();
+    abort();//终止执行
   }
 
   /* camera settings */
@@ -229,7 +243,7 @@ int main( int argc, char *argv[] )
   string pixel_format = "NV12";
   size_t update_rate __attribute__((unused)) = 1;
   OperationMode operation_mode = OperationMode::S2;
-  bool log_mem_usage = false;
+  bool log_mem_usage = false;//是否记录内存使用情况
 
   const option command_line_options[] = {
     { "mode",          required_argument, nullptr, 'm' },
@@ -240,8 +254,8 @@ int main( int argc, char *argv[] )
     { 0, 0, 0, 0 }
   };
 
-  while ( true ) {
-    const int opt = getopt_long( argc, argv, "d:p:m:u:", command_line_options, nullptr );
+  while ( true ) {//这个循环会一直执行，直到getopt_long函数返回-1，表示所有的命令行参数都已经被解析完。
+    const int opt = getopt_long( argc, argv, "d:p:m:u:", command_line_options, nullptr );//getopt_long函数，这是一个用于解析命令行选项的库函数
 
     if ( opt == -1 ) { break; }
 
