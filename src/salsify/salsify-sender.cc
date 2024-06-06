@@ -170,15 +170,29 @@ EncodeOutput do_encode_job( EncodeJob && encode_job )
 }
 
 size_t target_size( uint32_t avg_delay, const uint64_t last_acked, const uint64_t last_sent,
-                    const uint32_t max_delay = 100 * 1000 /* 100 ms = 100,000 us */ )
+                    const uint32_t max_delay = 100 * 1000 /* 100 ms = 100,000 us */ )//用于计算目标数据包的大小
+// avg_delay（平均延迟）、last_acked（最后确认的序列号）、last_sent（最后发送的序列号）和max_delay（最大延迟，默认值为100,000微秒，即100毫秒）。
 {
   if ( avg_delay == 0 ) { avg_delay = 1; }
 
-  /* cerr << "Packets in flight: " << last_sent - last_acked << "\n";
-  cerr << "Avg inter-packet-arrival interval: " << avg_delay << "\n";
-  cerr << "Imputed delay: " << avg_delay * (last_sent - last_acked) << " us\n"; */
+  /* cerr << "Packets in flight: " << last_sent - last_acked << "\n";计算在飞行中的数据包数量
+  cerr << "Avg inter-packet-arrival interval: " << avg_delay << "\n";算平均每个数据包到达的间隔
+  cerr << "Imputed delay: " << avg_delay * (last_sent - last_acked) << " us\n"; 计算算推断的延迟*/
 
   return 1400 * max( 0l, static_cast<int64_t>( max_delay / avg_delay - ( last_sent - last_acked ) ) );
+/*这行代码返回的是目标数据包的大小。计算公式为 `1400 * max(0, max_delay / avg_delay - (last_sent - last_acked))`。
+解释如下：
+- `1400`：这可能是一个数据包的最大字节数。
+- `max(0, max_delay / avg_delay - (last_sent - last_acked))`：这部分计算的是可以容忍的最大数据包数量。其中：
+    - `max_delay / avg_delay`：这部分表示在最大延迟时间内，理论上可以发送的数据包数量。
+    - `(last_sent - last_acked)`：这部分表示当前已发送但未被确认的数据包数量。
+    - `max_delay / avg_delay - (last_sent - last_acked)`：这部分表示在最大延迟时间内，还可以发送的数据包数量。如果这个值为负（即当前未确认的数据包数量已经超过了在最大延迟时间内可以发送的数据包数量），则取0。
+所以，这行代码的含义是：计算在当前网络状况下，目标数据包的大小，以便进行流量控制。
+
+ 这段代码是C++中的一个表达式，它使用了`max`函数和`static_cast`操作符。
+ - `max(0l, ...)`：`max`函数返回两个参数中的最大值。在这里，它比较`0l`（表示长整型的0）和另一个表达式的值，返回两者中的最大值。
+ - `static_cast<int64_t>(...)`：`static_cast`是C++中的一种类型转换操作符，用于在不同类型之间进行转换。在这里，它将其参数的值转换为`int64_t`类型（64位整型）。
+ 所以，整个表达式的意思是：将某个值转换为64位整型，然后返回这个值和0之间的最大值。这样可以确保，即使转换的结果是负数，这个表达式也总是返回非负值。*/
 }
 
 void usage( const char *argv0 )
