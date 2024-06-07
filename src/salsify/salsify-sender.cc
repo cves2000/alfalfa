@@ -297,10 +297,10 @@ int main( int argc, char *argv[] )
   /* construct Socket for outgoing datagrams */
   UDPSocket socket;
   socket.connect( Address( argv[ optind ], argv[ optind + 1 ] ) );
-  socket.set_timestamps();
+  socket.set_timestamps();//为每个发送的数据包设置时间戳，这对于网络调试和性能分析很有用。
 
   /* make pacer to smooth out outgoing packets */
-  Pacer pacer;
+  Pacer pacer;//创建了一个数据包平滑器。平滑器用于控制数据包的发送速率，以防止网络拥塞。
 
   /* get connection_id */
   const uint16_t connection_id = paranoid::stoul( argv[ optind + 2 ] );
@@ -310,7 +310,7 @@ int main( int argc, char *argv[] )
 
   /* keep the number of fragments per frame */
   vector<uint64_t> cumulative_fpf;
-  uint64_t last_acked = numeric_limits<uint64_t>::max();
+  uint64_t last_acked = numeric_limits<uint64_t>::max();//返回uint64_t类型能表示的最大值2^64 - 1。
 
   /* maximum number of frames to be skipped in a row */
   const size_t MAX_SKIPPED = 3;
@@ -326,38 +326,47 @@ int main( int argc, char *argv[] )
   /* construct the encoder */
   Encoder base_encoder { camera.display_width(), camera.display_height(),
                          false /* two-pass */, REALTIME_QUALITY };
-
+/*这行代码是在创建一个`Encoder`对象，名为`base_encoder`。`Encoder`可能是一个类，用于处理视频编码。这个类的构造函数接受四个参数：
+1. `camera.display_width()`和`camera.display_height()`：这两个参数可能是编码器需要处理的视频的宽度和高度。这些值通常来自摄像头设备。
+2. `false /* two-pass */`：这个参数可能是一个布尔值，指示编码器是否应该使用两遍编码。两遍编码是一种编码技术，第一遍分析视频内容，第二遍根据第一遍的分析结果进行实际的编码。在这里，`false`表示不使用两遍编码。
+3. `REALTIME_QUALITY`：这个参数可能是一个预定义的常量，指示编码器应该使用的质量设置。在这里，`REALTIME_QUALITY`可能表示编码器应该优化实时性能，而不是最终视频的质量。
+所以，这行代码的作用是使用指定的视频尺寸、编码模式和质量设置来创建一个`Encoder`对象。*/
+  
   const uint32_t initial_state = base_encoder.minihash();
-
+//获取base_encoder的初始状态。base_encoder可能是一个编码器对象，minihash()可能是一个成员函数，用于获取编码器的当前状态的哈希值。
   /* encoded frame index */
   unsigned int frame_no = 0;
 
   /* latest raster that is received from the input */
-  Optional<RasterHandle> last_raster;
+  Optional<RasterHandle> last_raster;//这是一个可选的光栅句柄，用于存储从输入接收到的最新光栅图像。
 
   /* where we keep the outputs of parallel encoding jobs */
   vector<EncodeJob> encode_jobs;
   vector<future<EncodeOutput>> encode_outputs;
+  //这两个向量用于存储并行编码任务的输入和输出。encode_jobs存储了所有的编码任务，encode_outputs存储了这些任务的结果。
 
   /* keep the moving average of encoding times */
-  AverageEncodingTime avg_encoding_time;
+  AverageEncodingTime avg_encoding_time;//用于计算编码时间的移动平均值。
 
   /* track the last quantizer used */
-  uint8_t last_quantizer = 64;
+  uint8_t last_quantizer = 64;//跟踪上一次使用的量化器
 
   /* decoder hash => encoder object */
   deque<uint32_t> encoder_states;
   unordered_map<uint32_t, Encoder> encoders { { initial_state, base_encoder } };
+  //这个双端队列和无序映射用于存储编码器的状态。encoder_states存储了所有的编码器状态的哈希值，encoders将这些哈希值映射到对应的编码器对象。
 
   /* latest state of the receiver, based on ack packets */
-  Optional<uint32_t> receiver_last_acked_state;
-  Optional<uint32_t> receiver_assumed_state;
-  deque<uint32_t> receiver_complete_states;
+  Optional<uint32_t> receiver_last_acked_state;//最后确认的状态
+  Optional<uint32_t> receiver_assumed_state;//假定的状态
+  deque<uint32_t> receiver_complete_states;//完整的状态
 
   /* if the receiver goes into an invalid state, for this amount of seconds,
      we will go into a conservative mode: we only encode based on a known state */
   seconds conservative_for { 5 };
   system_clock::time_point conservative_until = system_clock::now();
+  /*如果接收者进入一个无效的状态，编码器将进入保守模式，只基于已知的状态进行编码。
+  这是通过设置一个保守模式的持续时间（conservative_for）和一个保守模式的结束时间（conservative_until）来实现的。*/
 
   /* for 'conventional codec' mode */
   duration<long int, std::nano> cc_update_interval { ( update_rate == 0 ) ? 0 : std::nano::den / update_rate };
@@ -365,6 +374,9 @@ int main( int argc, char *argv[] )
   size_t cc_quantizer = 32;
   size_t cc_rate = 0;
   size_t cc_rate_ewma = 0;
+  /*传统编码模式：在传统编码模式下，编码器会定期更新质量设置。
+  这是通过设置一个更新间隔（cc_update_interval）和下一个更新时间（next_cc_update）来实现的。
+  此外，还设置了量化器（cc_quantizer）和速率（cc_rate和cc_rate_ewma）的初始值。*/
 
   /* :D */
   system_clock::time_point last_sent = system_clock::now();
@@ -372,10 +384,12 @@ int main( int argc, char *argv[] )
   /* comment */
   auto encode_start_pipe = UnixDomainSocket::make_pair();
   auto encode_end_pipe = UnixDomainSocket::make_pair();
-
+  //这两行代码创建了两个Unix域套接字对，一个用于标记编码任务的开始，另一个用于标记编码任务的结束。
+  
   /* mem usage timer */
   system_clock::time_point next_mem_usage_report = system_clock::now();
-
+  //初始化为当前时间。这个对象可能用于跟踪下一次报告内存使用情况的时间。
+ 
   Poller poller;
 
   /* fetch frames from webcam */
